@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Токен бота (ЗАМЕНИТЕ НА ВАШ ТОКЕН!)
-BOT_TOKEN = "8224471102:AAHmGZFo3XDIBhE9OQyualUWjAuBE_JDQts"
+BOT_TOKEN = ""
 
 # Данные о товарах
 PRODUCTS = {
@@ -620,4 +620,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
