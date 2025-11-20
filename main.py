@@ -2,47 +2,36 @@ import logging
 import os
 import re
 import uuid
-from typing import Dict, Any, Optional
+from typing import Any, Dict
 
-from telegram import (
-    Update,
-    ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton
-)
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    filters,
-    CallbackQueryHandler,
-    ContextTypes,
-    ConversationHandler,
-    CallbackContext
-)
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+from telegram import (InlineKeyboardButton, InlineKeyboardMarkup,
+                      KeyboardButton, ReplyKeyboardMarkup, Update)
+from telegram.ext import (Application, CallbackQueryHandler, CommandHandler,
+                          ContextTypes, ConversationHandler, MessageHandler,
+                          filters)
 
 # Настройка логирования
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 logger = logging.getLogger(__name__)
 
 # Состояния для ConversationHandler
 COLOR, SIZE, PHONE, NAME, ADDRESS, CONFIRM_ORDER = range(6)
 
+
 # Конфигурация через Pydantic
 class Settings(BaseSettings):
     """Конфигурация приложения через Pydantic"""
-    bot_token: str = Field(..., validation_alias='BOT_TOKEN')
+
+    bot_token: str = Field(..., validation_alias="BOT_TOKEN")
 
     model_config = SettingsConfigDict(
-        env_file='.env',
-        env_file_encoding='utf-8',
-        extra='ignore'
+        # env_file='.env',
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
 
@@ -54,7 +43,7 @@ try:
 except Exception as e:
     logger.error(f"Ошибка загрузки конфигурации: {e}")
     # Fallback на переменные окружения
-    BOT_TOKEN = os.getenv('BOT_TOKEN')
+    BOT_TOKEN = os.getenv("BOT_TOKEN")
     if not BOT_TOKEN:
         logger.error("BOT_TOKEN не найден в конфигурации или переменных окружения")
         raise ValueError("BOT_TOKEN не найден. Создайте файл .env с BOT_TOKEN=ваш_токен")
@@ -67,7 +56,7 @@ PRODUCTS = {
         "price": "199 500 руб",
         "category": "Комплекты",
         "details": "• Комплектация:\nБронешлем БР2 степени защиты\nБронежилет «Тайфун» с интегрированной защитой шеи\nЗащита плеч\nНапашник (увеличенный, лепестковый)\nПятиточечник (увеличенный, двойной)\nРазгрузочно-поясная система (РПС) с баллистической защитой, каркасом и подтяжками\nБронезащита ног (модели бедер и голени)\nПротивогрязевые гамаши\nКомплект документов\nСумка-переноска",
-        "image": "images/comprotivooskoloch.webp"
+        "image": "images/comprotivooskoloch.webp",
     },
     "komplekt_shturmovoy": {
         "name": "⚡ Комплект Штурмовой",
@@ -75,7 +64,7 @@ PRODUCTS = {
         "price": "210 000 руб",
         "category": "Комплекты",
         "details": "• Состав комплекта:\nБронешлем БР2\nЗащита шеи\nЗащита плеч\nБронежилет «Шторм» с круговой баллистикой и системой КАП\nВзаимозаменяемые модули под плиты\nРазгрузочно-поясная система (РПС) с баллистической защитой, каркасом и подтяжками\nНапашник (увеличенный, лепестковый)\nПятиточечник (увеличенный, двойной)\nБронезащита для ног (модули на бедра и голени)\nПротивогрязевые гамаши\nПлиты бронезащиты от БР3 до БР5 (сталь, керамика, оксид алюминия)\nКомплект документов (сертификат, паспорт)\nСумка для переноски",
-        "image": "images/comshturm.webp"
+        "image": "images/comshturm.webp",
     },
     "podarochny_sertifikat": {
         "name": "🎁 Подарочный Сертификат",
@@ -83,7 +72,7 @@ PRODUCTS = {
         "price": "100 000 руб",
         "category": "Сертификаты",
         "details": "• Номинал: 100 000 руб\n• Срок действия: 1 год\n• Можно комбинировать с другими покупками\n• Электронный или бумажный формат",
-        "image": "images/podarok.webp"
+        "image": "images/podarok.webp",
     },
     "purga": {
         "name": "❄️ Бронежилет Пурга",
@@ -91,7 +80,7 @@ PRODUCTS = {
         "price": "23 100 руб / 45 500 руб (без/с баллистикой)",
         "category": "Бронежилеты",
         "details": "• Класс защиты: БР 1\n• Вес: 3.3 кг\n• Система быстрого сброса: да\n• Увеличенная площадь защиты: да\n• Универсальный карман под плиты: да\n• Модульная передняя панель: да\n• ИК-ремиссия: да\n• Эвакуационная стропа: да",
-        "image": "images/purga.webp"
+        "image": "images/purga.webp",
     },
     "mirazh": {
         "name": "🌫️ Бронежилет Мираж",
@@ -99,7 +88,7 @@ PRODUCTS = {
         "price": "39 900 руб",
         "category": "Бронежилеты",
         "details": "• Класс защиты: Бр1-2\n• Вес: 2.5-3 кг\n• Ношение: скрытое/наружное\n• Разгружает спину при длительном использовании\n• Обеспечивает надежную защиту благодаря современным материалам",
-        "image": "images/mirash.webp"
+        "image": "images/mirash.webp",
     },
     "ciklon": {
         "name": "🌀 Бронежилет Циклон",
@@ -107,7 +96,7 @@ PRODUCTS = {
         "price": "55 650 руб",
         "category": "Бронежилеты",
         "details": "• Класс защиты: БР 1\n• Вес: до 3 кг\n• Светоотражающие элементы: да\n• Клапан-компенсатор: да\n• Карман для маячка: да\n• Эвакуационная стропа: да\n• Создан совместно с врачами: да",
-        "image": "images/zhiklon.webp"
+        "image": "images/zhiklon.webp",
     },
     "promyshlenny": {
         "name": "🏭 Бронежилет Промышленный",
@@ -115,7 +104,7 @@ PRODUCTS = {
         "price": "63 000 руб",
         "category": "Бронежилеты",
         "details": "• Класс защиты: Бр1\n• Вес: 3 кг\n• Модульность: да\n• Эвакуационная стропа: да\n• Фиксаторы для инструмента: да\n• Атрибутика и цвет компании: по запросу\n• Дышащий материал: да\n• Крепление для инструментов и дополнительного снаряжения: да",
-        "image": "images/promshlenn.webp"
+        "image": "images/promshlenn.webp",
     },
     "taifun": {
         "name": "🌪️ Бронежилет Тайфун",
@@ -123,7 +112,7 @@ PRODUCTS = {
         "price": "69 300 руб",
         "category": "Бронежилеты",
         "details": "• Класс защиты: БР1\n• Вес: 3 кг\n• Модульность: да\n• Эвакуационная стропа: да\n• ИК-ремиссия: да\n• Фиксатор тангенты/гарнитуры: да\n• Защита шеи: да\n• Защита аорты: да\n• Увеличенная защита области ребер: да",
-        "image": "images/taifun.webp"
+        "image": "images/taifun.webp",
     },
     "shtorm": {
         "name": "🌊 Бронежилет Шторм",
@@ -131,7 +120,7 @@ PRODUCTS = {
         "price": "73 920 руб",
         "category": "Бронежилеты",
         "details": "• Класс защиты: БР1\n• Вес: 4.2 кг\n• Взаимозаменяемые модули под плиты: да\n• Универсальный карман для бронеплит: да\n• Эвакуационная стропа: да\n• Интегрированная защита шеи: да\n• ИК-ремиссия: да\n• Боевая рубаха: да",
-        "image": "images/shtorm.webp"
+        "image": "images/shtorm.webp",
     },
     "zashita_shei": {
         "name": "🦵 Защита Шеи",
@@ -139,7 +128,7 @@ PRODUCTS = {
         "price": "23 100 руб",
         "category": "Доп. защита",
         "details": "• Класс защиты: БР1\n• Вес: 1,5 кг\n• ИК-ремиссия: да\n• Возможность регулировки: да\n• Передний съемный модуль: да",
-        "image": "images/bronneck.webp"
+        "image": "images/bronneck.webp",
     },
     "zashita_plech": {
         "name": "💪 Защита Плеч",
@@ -147,7 +136,7 @@ PRODUCTS = {
         "price": "15 750 руб",
         "category": "Доп. защита",
         "details": "• Класс защиты: БР1\n• Вес: 1 кг\n• ИК-ремиссия: да\n• Удобная фиксация: да\n• Быстрый съем: да",
-        "image": "images/bronplech.webp"
+        "image": "images/bronplech.webp",
     },
     "napashnik": {
         "name": "🎽 Напашник Пятиточечник",
@@ -155,7 +144,7 @@ PRODUCTS = {
         "price": "15 750 руб",
         "category": "Экипировка",
         "details": "• Материал: Cordura\n• Защита: БР1\n• Совместимость: полная (не конфликтует)\n• ИК-ремиссия: да",
-        "image": "images/hui.webp"
+        "image": "images/hui.webp",
     },
     "razgruzochny_poyas": {
         "name": "🦺 Разгрузочный пояс",
@@ -163,7 +152,7 @@ PRODUCTS = {
         "price": "23 000 руб",
         "category": "Экипировка",
         "details": "• Класс защиты: БР1\n• Вес: 1 кг\n• Каркасная конструкция: да\n• Возможность регулировки: да\n• Амортизационный элемент: да\n• Возможность установки плит: да\n• Ширина: 19 см (на уровне поясничного отдела)\n• ИК-ремиссия: да",
-        "image": "images/rasgrusohnpoys.webp"
+        "image": "images/rasgrusohnpoys.webp",
     },
     "poyas_kobura": {
         "name": "🔫 Пояс Кобура",
@@ -171,7 +160,7 @@ PRODUCTS = {
         "price": "5 250 руб",
         "category": "Экипировка",
         "details": "• Материал: эластичный шнур\n• Подходит: для ПМ, ТТ\n• Регулировка: да\n• Цвет: черный, коричневый",
-        "image": "images/poyskob.webp"
+        "image": "images/poyskob.webp",
     },
     "zashita_nog": {
         "name": "🦵 Бронезащита ног",
@@ -179,7 +168,7 @@ PRODUCTS = {
         "price": "79 800 руб",
         "category": "Доп. защита",
         "details": "• Защита: БР1-2\n• Вес: 2-4 кг\n• Регулировка: по размеру\n• ИК-ремиссия: да\n• Не сковывает движение: да\n• Быстрый сброс: да",
-        "image": "images/bronnog.webp"
+        "image": "images/bronnog.webp",
     },
     "zaryadka_ak": {
         "name": "🔋 Приспособление для снаряжения магазина АК",
@@ -187,7 +176,7 @@ PRODUCTS = {
         "price": "1 575 руб",
         "category": "Аксессуары",
         "details": "• Совместимость: Подходит для всех магазинов 5.45×39 мм\n• Материал: пластик+металл\n• Вес: 0.41 кг\n• Цвет: черный",
-        "image": "images/zarak.webp"
+        "image": "images/zarak.webp",
     },
     "ukazatel_miny": {
         "name": "⚠️ Указатель Мины",
@@ -195,7 +184,7 @@ PRODUCTS = {
         "price": "63 руб",
         "category": "Аксессуары",
         "details": "• Материал: металл и ПВХ\n• Цвет: красный\n• Высота: от 9 см\n• Погодоустойчивость: да",
-        "image": "images/min.webp"
+        "image": "images/min.webp",
     },
     "stelki": {
         "name": "👞 Противоосколочные стельки",
@@ -203,7 +192,7 @@ PRODUCTS = {
         "price": "5 250 руб",
         "category": "Аксессуары",
         "details": "• Материал: арамид\n• Размеры: 38-46\n• Антибактериальные: да\n• Ортопедические: да\n• Срок службы: 1 год",
-        "image": "images/steliki.jpg"
+        "image": "images/steliki.jpg",
     },
     "tacticheskaya_sumka": {
         "name": "🎒 Тактическая сумка-баул",
@@ -211,7 +200,7 @@ PRODUCTS = {
         "price": "6 650 руб",
         "category": "Экипировка",
         "details": "• Объем: 100 л\n• Размеры (ШхГхВ): 79х34х34 см\n• ИК-ремиссия: да",
-        "image": "images/taktsumbayl.jpg"
+        "image": "images/taktsumbayl.jpg",
     },
     "spasatel": {
         "name": "🚑 Спасатель (КОБ)",
@@ -219,7 +208,7 @@ PRODUCTS = {
         "price": "656 250 руб",
         "category": "Мед. оборудование",
         "details": "• Металлический шкаф с необходимым снаряжением:\n* Бронежилеты классов БР2 С2\n* Фонари\n* Термоодеяла\n* Свистки\n* Маски для защиты органов дыхания\n* Комплексная аптечка\n* Трос-самоспасатель\n* Складные бескаркасные носилки",
-        "image": "images/KOB.webp"
+        "image": "images/KOB.webp",
     },
     "nosilki": {
         "name": "🚑 Эвакуационные носилки",
@@ -227,7 +216,7 @@ PRODUCTS = {
         "price": "15 750 руб",
         "category": "Мед. оборудование",
         "details": "• Грузоподъемность: 180 кг\n• Вес: менее 3 кг\n• 4 точки крепления для фиксации пациента\n• Возможность крепления в автомобиле\n• Компактный чехол-тубус\n• Складная конструкция",
-        "image": "images/nosilki.webp"
+        "image": "images/nosilki.webp",
     },
     "bronelity": {
         "name": "🛡️ Бронеплиты",
@@ -235,63 +224,63 @@ PRODUCTS = {
         "price": "от 5 500 руб",
         "category": "Комплектующие",
         "details": "• Керамические бронеплиты\n• Металлические бронеплиты (стальные)\n• Комбинированные бронеплиты\n• Бронеплиты СВМПЭ",
-        "image": "images/broneplit.webp"
-    }
+        "image": "images/broneplit.webp",
+    },
 }
 # Частые вопросы (остались без изменений)
 FAQ = {
     "ballistics": {
         "question": "🛡️ Какая баллистика используется в изделиях?",
-        "answer": "Мы используем арамидную ткань (кевлар), но по запросу также можем использовать СВМПЭ. Баллистический пакет запаян в водонепроницаемый чехол."
+        "answer": "Мы используем арамидную ткань (кевлар), но по запросу также можем использовать СВМПЭ. Баллистический пакет запаян в водонепроницаемый чехол.",
     },
     "production": {
         "question": "🏭 Где находится производство? Можно приехать примерить, посмотреть?",
-        "answer": "Конечно! Адрес офиса: СПб, ул. Маршала Тухачевского 22, БЦ Сова, 2 этаж, офис 216\nАдрес производства: СПб, ул. Львовская д.9"
+        "answer": "Конечно! Адрес офиса: СПб, ул. Маршала Тухачевского 22, БЦ Сова, 2 этаж, офис 216\nАдрес производства: СПб, ул. Львовская д.9",
     },
     "protection_level": {
         "question": "📊 Какая степень защиты у противоосколочного бронепакета?",
-        "answer": "В рамках ГОСТ принято считать, что БР1 дает 15-18 слоев кевлара. Мы же устанавливаем 24 слоя, поэтому смело можно считать его усиленным-БР1+"
+        "answer": "В рамках ГОСТ принято считать, что БР1 дает 15-18 слоев кевлара. Мы же устанавливаем 24 слоя, поэтому смело можно считать его усиленным-БР1+",
     },
     "discounts": {
         "question": "💸 Есть ли скидки?",
-        "answer": "У нас существует система скидок для общественных организаций, фондов, епархий. Для физических лиц мы можем предоставить персональную скидку, которая рассчитывается индивидуально."
+        "answer": "У нас существует система скидок для общественных организаций, фондов, епархий. Для физических лиц мы можем предоставить персональную скидку, которая рассчитывается индивидуально.",
     },
     "weight": {
         "question": "⚖️ Какой вес полного комплекта?",
-        "answer": "Вес комплекта зависит от наполнения заказа, в среднем от 7 до 15 кг."
+        "answer": "Вес комплекта зависит от наполнения заказа, в среднем от 7 до 15 кг.",
     },
     "sizes": {
         "question": "📏 Есть ли большие размеры?",
-        "answer": "Да, у нас свое производство, изделия ручной работы. Все размеры уточняются при консультировании и соответствуют русским стандартам. Шьем от самого маленького до самого большого."
+        "answer": "Да, у нас свое производство, изделия ручной работы. Все размеры уточняются при консультировании и соответствуют русским стандартам. Шьем от самого маленького до самого большого.",
     },
     "delivery": {
         "question": "🚚 Есть ли доставка?",
-        "answer": "Мы дарим клиентам бесплатную доставку по всей РФ при заказе от 100 000 рублей"
+        "answer": "Мы дарим клиентам бесплатную доставку по всей РФ при заказе от 100 000 рублей",
     },
     "customization": {
         "question": "🎨 Можно ли изменить под индивидуальные потребности?",
-        "answer": "Да, мы можем изменить имеющиеся изделия или разработать новое, в зависимости от пожеланий клиента."
+        "answer": "Да, мы можем изменить имеющиеся изделия или разработать новое, в зависимости от пожеланий клиента.",
     },
     "certificates": {
         "question": "📋 Есть ли сертификаты, протоколы испытаний?",
-        "answer": "Да, каждое изделие направляется вместе с документами соответствия (сертификаты, паспорта)"
+        "answer": "Да, каждое изделие направляется вместе с документами соответствия (сертификаты, паспорта)",
     },
     "repair": {
         "question": "🔧 Можете ли отремонтировать уже имеющийся бронежилет?",
-        "answer": "Да, у нас есть сервисное обслуживание бронезащиты. Мы можем отремонтировать ваш бронежилет, а также в случае необходимости, купленный у нас."
+        "answer": "Да, у нас есть сервисное обслуживание бронезащиты. Мы можем отремонтировать ваш бронежилет, а также в случае необходимости, купленный у нас.",
     },
     "vat": {
         "question": "💰 Работаете с НДС или без НДС?",
-        "answer": "У нас возможна любая форма оплаты."
+        "answer": "У нас возможна любая форма оплаты.",
     },
     "price": {
         "question": "💎 Почему так дорого?",
-        "answer": "Мы используем высококачественные проверенные материалы и фурнитуру. Самые прочные лавсановые нити. Самая большая площадь противоосколочной защиты. Шьем вручную (все швы спрятаны внутрь, что обезопасит клиентов от натирания). Даём большой гарантийный срок и сервис по обслуживанию."
-    }
+        "answer": "Мы используем высококачественные проверенные материалы и фурнитуру. Самые прочные лавсановые нити. Самая большая площадь противоосколочной защиты. Шьем вручную (все швы спрятаны внутрь, что обезопасит клиентов от натирания). Даём большой гарантийный срок и сервис по обслуживанию.",
+    },
 }
 
 # Хранилище корзин пользователей
-user_carts: Dict[int, 'Cart'] = {}
+user_carts: Dict[int, "Cart"] = {}
 
 # Хранилище заказов
 user_orders: Dict[str, Dict[str, Any]] = {}
@@ -332,12 +321,14 @@ class Cart:
             if product_id in PRODUCTS:
                 product = PRODUCTS[product_id]
                 price = extract_price(product["price"])
-                items_details.append({
-                    'name': product['name'],
-                    'quantity': quantity,
-                    'price': price,
-                    'total': price * quantity
-                })
+                items_details.append(
+                    {
+                        "name": product["name"],
+                        "quantity": quantity,
+                        "price": price,
+                        "total": price * quantity,
+                    }
+                )
         return items_details
 
 
@@ -345,11 +336,11 @@ class Cart:
 def extract_price(price_str: str) -> int:
     try:
         # Убираем "руб" и пробелы, оставляем только цифры
-        price_clean = price_str.replace('руб', '').replace(' ', '').strip()
+        price_clean = price_str.replace("руб", "").replace(" ", "").strip()
         # Если есть другие символы, берем только первую часть до нецифрового символа
         if not price_clean.isdigit():
             # Ищем первую последовательность цифр
-            match = re.search(r'\d+', price_clean)
+            match = re.search(r"\d+", price_clean)
             if match:
                 price_clean = match.group()
         return int(price_clean)
@@ -369,7 +360,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = [
         [KeyboardButton("🛍️ Каталог товаров"), KeyboardButton("❓ Частые вопросы")],
         [KeyboardButton("ℹ️ О компании"), KeyboardButton("📞 Контакты")],
-        [KeyboardButton("🔥 Топ товары"), KeyboardButton("🛒 Корзина")]
+        [KeyboardButton("🔥 Топ товары"), KeyboardButton("🛒 Корзина")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
@@ -377,7 +368,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "🛡️ Добро пожаловать в магазин защитной экипировки и бронежилетов!\n\n"
         "Мы предлагаем полный спектр средств защиты для вашей безопасности.\n\n"
         "Выберите действие:",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
 
 
@@ -397,15 +388,17 @@ async def show_cart(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     for item in items_details:
         message += f"{item['name']}\n"
-        message += f"Количество: {item['quantity']} × {item['price']:,} руб = {item['total']:,} руб\n\n"
-        total += item['total']
+        message += (
+            f"Количество: {item['quantity']} × {item['price']:,} руб = {item['total']:,} руб\n\n"
+        )
+        total += item["total"]
 
     message += f"💎 Общая сумма: {total:,} руб"
 
     keyboard = [
         [InlineKeyboardButton("✅ Оформить заказ", callback_data="checkout")],
         [InlineKeyboardButton("🗑️ Очистить корзину", callback_data="clear_cart")],
-        [InlineKeyboardButton("🛍️ Продолжить покупки", callback_data="back_to_catalog")]
+        [InlineKeyboardButton("🛍️ Продолжить покупки", callback_data="back_to_catalog")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -448,37 +441,37 @@ async def ask_color_from_callback(query, context: ContextTypes.DEFAULT_TYPE) -> 
         [InlineKeyboardButton("Черный", callback_data="color_black")],
         [InlineKeyboardButton("Хаки", callback_data="color_khaki")],
         [InlineKeyboardButton("Оливковый", callback_data="color_olive")],
-        [InlineKeyboardButton("Отменить", callback_data="cancel_order")]
+        [InlineKeyboardButton("Отменить", callback_data="cancel_order")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "🎨 Выберите цвет товара:",
-        reply_markup=reply_markup
-    )
+    await query.edit_message_text("🎨 Выберите цвет товара:", reply_markup=reply_markup)
 
 
 # Спрашиваем размер
 async def ask_size(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     color = query.data.replace("color_", "")
-    context.user_data['color'] = color
+    context.user_data["color"] = color
 
     keyboard = [
-        [InlineKeyboardButton("S", callback_data="size_S"),
-         InlineKeyboardButton("M", callback_data="size_M")],
-        [InlineKeyboardButton("L", callback_data="size_L"),
-         InlineKeyboardButton("XL", callback_data="size_XL")],
+        [
+            InlineKeyboardButton("S", callback_data="size_S"),
+            InlineKeyboardButton("M", callback_data="size_M"),
+        ],
+        [
+            InlineKeyboardButton("L", callback_data="size_L"),
+            InlineKeyboardButton("XL", callback_data="size_XL"),
+        ],
         [InlineKeyboardButton("XXL", callback_data="size_XXL")],
-        [InlineKeyboardButton("Назад", callback_data="back_to_color"),
-         InlineKeyboardButton("Отменить", callback_data="cancel_order")]
+        [
+            InlineKeyboardButton("Назад", callback_data="back_to_color"),
+            InlineKeyboardButton("Отменить", callback_data="cancel_order"),
+        ],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "📏 Выберите размер:",
-        reply_markup=reply_markup
-    )
+    await query.edit_message_text("📏 Выберите размер:", reply_markup=reply_markup)
     return SIZE
 
 
@@ -486,17 +479,14 @@ async def ask_size(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     size = query.data.replace("size_", "")
-    context.user_data['size'] = size
+    context.user_data["size"] = size
 
-    keyboard = [
-        [InlineKeyboardButton("Отменить", callback_data="cancel_order")]
-    ]
+    keyboard = [[InlineKeyboardButton("Отменить", callback_data="cancel_order")]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
-        "📞 Введите номер телефона для связи:\n\n"
-        "Пример: +79123456789 или 89123456789",
-        reply_markup=reply_markup
+        "📞 Введите номер телефона для связи:\n\nПример: +79123456789 или 89123456789",
+        reply_markup=reply_markup,
     )
     return PHONE
 
@@ -505,16 +495,15 @@ async def ask_phone(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def ask_name(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     phone = update.message.text
     # Простая валидация номера телефона
-    cleaned_phone = phone.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
-    if not re.match(r'^(\+7|8)\d{10}$', cleaned_phone):
+    cleaned_phone = phone.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+    if not re.match(r"^(\+7|8)\d{10}$", cleaned_phone):
         await update.message.reply_text("❌ Неверный формат номера. Попробуйте еще раз:")
         return PHONE
 
-    context.user_data['phone'] = cleaned_phone
+    context.user_data["phone"] = cleaned_phone
 
     await update.message.reply_text(
-        "👤 Введите ваше ФИО или имя:\n\n"
-        "Пример: Иванов Иван Иванович или Иван"
+        "👤 Введите ваше ФИО или имя:\n\nПример: Иванов Иван Иванович или Иван"
     )
     return NAME
 
@@ -526,11 +515,10 @@ async def ask_address(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         await update.message.reply_text("❌ Имя слишком короткое. Введите еще раз:")
         return NAME
 
-    context.user_data['name'] = name
+    context.user_data["name"] = name
 
     await update.message.reply_text(
-        "🏠 Введите адрес доставки:\n\n"
-        "Пример: г. Москва, ул. Ленина, д. 1, кв. 1"
+        "🏠 Введите адрес доставки:\n\nПример: г. Москва, ул. Ленина, д. 1, кв. 1"
     )
     return ADDRESS
 
@@ -542,7 +530,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
         await update.message.reply_text("❌ Адрес слишком короткий. Введите еще раз:")
         return ADDRESS
 
-    context.user_data['address'] = address
+    context.user_data["address"] = address
 
     # Формируем информацию о заказе
     user_id = update.effective_user.id
@@ -567,7 +555,7 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
     keyboard = [
         [InlineKeyboardButton("✅ Подтвердить заказ", callback_data="final_confirm")],
         [InlineKeyboardButton("✏️ Изменить данные", callback_data="change_data")],
-        [InlineKeyboardButton("❌ Отменить заказ", callback_data="cancel_order")]
+        [InlineKeyboardButton("❌ Отменить заказ", callback_data="cancel_order")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -576,7 +564,12 @@ async def confirm_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> i
 
 
 # Отправка заказа администратору
-async def send_order_to_admin(context: ContextTypes.DEFAULT_TYPE, order_id: str, order_data: Dict[str, Any], user_info: Dict[str, Any]) -> bool:
+async def send_order_to_admin(
+    context: ContextTypes.DEFAULT_TYPE,
+    order_id: str,
+    order_data: Dict[str, Any],
+    user_info: Dict[str, Any],
+) -> bool:
     try:
         # Формируем сообщение для администратора
         admin_message = f"🆕 НОВЫЙ ЗАКАЗ #{order_id}\n\n"
@@ -585,7 +578,7 @@ async def send_order_to_admin(context: ContextTypes.DEFAULT_TYPE, order_id: str,
         admin_message += f"👤 ФИО: {order_data['name']}\n\n"
 
         admin_message += "🛒 Состав заказа:\n"
-        for item in order_data['items_details']:
+        for item in order_data["items_details"]:
             admin_message += f"• {item['name']} × {item['quantity']} = {item['total']:,} руб\n"
 
         admin_message += f"\n💎 Сумма заказа: {order_data['total_amount']:,} руб\n\n"
@@ -599,10 +592,7 @@ async def send_order_to_admin(context: ContextTypes.DEFAULT_TYPE, order_id: str,
         ADMIN_CHAT_ID = 903065504  # Замените на ваш Chat ID
 
         # Отправляем сообщение по Chat ID
-        await context.bot.send_message(
-            chat_id=ADMIN_CHAT_ID,
-            text=admin_message
-        )
+        await context.bot.send_message(chat_id=ADMIN_CHAT_ID, text=admin_message)
 
         logger.info(f"Заказ #{order_id} отправлен администратору (Chat ID: {ADMIN_CHAT_ID})")
         return True
@@ -631,25 +621,22 @@ async def complete_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
     # Сохраняем заказ
     order_data = {
-        'user_id': user_id,
-        'items': cart.items.copy(),
-        'items_details': items_details,
-        'color': context.user_data['color'],
-        'size': context.user_data['size'],
-        'phone': context.user_data['phone'],
-        'name': context.user_data['name'],
-        'address': context.user_data['address'],
-        'total_amount': total_amount,
-        'status': 'pending'
+        "user_id": user_id,
+        "items": cart.items.copy(),
+        "items_details": items_details,
+        "color": context.user_data["color"],
+        "size": context.user_data["size"],
+        "phone": context.user_data["phone"],
+        "name": context.user_data["name"],
+        "address": context.user_data["address"],
+        "total_amount": total_amount,
+        "status": "pending",
     }
 
     user_orders[order_id] = order_data
 
     # Отправляем заказ администратору
-    user_info = {
-        'id': user_id,
-        'username': query.from_user.username or "Не указан"
-    }
+    user_info = {"id": user_id, "username": query.from_user.username or "Не указан"}
 
     # Передаем context для отправки сообщения
     await send_order_to_admin(context, order_id, order_data, user_info)
@@ -674,7 +661,7 @@ async def complete_order(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         [InlineKeyboardButton("💳 Оплатить картой", callback_data=f"pay_card_{order_id}")],
         [InlineKeyboardButton("📱 Оплатить по QR-коду", callback_data=f"pay_qr_{order_id}")],
         [InlineKeyboardButton("📞 Связаться для оплаты", url="https://t.me/tk_operator")],
-        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")]
+        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -703,29 +690,37 @@ async def show_qr_code(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     order = user_orders[order_id]
 
     # Сохраняем order_id в context для использования в callback
-    context.user_data['current_order_id'] = order_id
+    context.user_data["current_order_id"] = order_id
 
     # Проверяем наличие QR-кода
     qr_code_path = "images/qr.png"
     if os.path.exists(qr_code_path):
         try:
-            with open(qr_code_path, 'rb') as photo:
-                caption = (f"📱 QR-код для оплаты заказа #{order_id}\n\n"
-                           f"💎 Сумма к оплате: {order['total_amount']:,} руб\n\n"
-                           f"После оплаты нажмите кнопку '✅ Я оплатил(а)'")
+            with open(qr_code_path, "rb") as photo:
+                caption = (
+                    f"📱 QR-код для оплаты заказа #{order_id}\n\n"
+                    f"💎 Сумма к оплате: {order['total_amount']:,} руб\n\n"
+                    f"После оплаты нажмите кнопку '✅ Я оплатил(а)'"
+                )
 
                 keyboard = [
                     [InlineKeyboardButton("✅ Я оплатил(а)", callback_data=f"paid_{order_id}")],
-                    [InlineKeyboardButton("📞 Связаться с оператором", url="https://t.me/tk_operator")],
-                    [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")]
+                    [
+                        InlineKeyboardButton(
+                            "📞 Связаться с оператором", url="https://t.me/tk_operator"
+                        )
+                    ],
+                    [
+                        InlineKeyboardButton(
+                            "🛍️ Вернуться в каталог", callback_data="back_to_catalog"
+                        )
+                    ],
                 ]
                 reply_markup = InlineKeyboardMarkup(keyboard)
 
                 # Отправляем новое сообщение с фото
                 await query.message.reply_photo(
-                    photo=photo,
-                    caption=caption,
-                    reply_markup=reply_markup
+                    photo=photo, caption=caption, reply_markup=reply_markup
                 )
                 # Удаляем предыдущее сообщение с выбором оплаты
                 try:
@@ -748,7 +743,7 @@ async def show_qr_code_fallback(query, order_id: str, order: Dict[str, Any]) -> 
         [InlineKeyboardButton("✅ Я оплатил(а)", callback_data=f"paid_{order_id}")],
         [InlineKeyboardButton("📞 Связаться с оператором", url="https://t.me/tk_operator")],
         [InlineKeyboardButton("💳 Оплатить картой", callback_data=f"pay_card_{order_id}")],
-        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")]
+        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -761,7 +756,7 @@ async def show_qr_code_fallback(query, order_id: str, order: Dict[str, Any]) -> 
         f"• Счет: 0000 0000 0000 0000\n"
         f"• Получатель: ТК Групп\n\n"
         f"После оплаты нажмите кнопку '✅ Я оплатил(а)'",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
 
 
@@ -794,7 +789,7 @@ async def pay_by_card(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         [InlineKeyboardButton("✅ Я оплатил(а)", callback_data=f"paid_{order_id}")],
         [InlineKeyboardButton("📞 Связаться с оператором", url="https://t.me/tk_operator")],
         [InlineKeyboardButton("📱 Оплатить по QR-коду", callback_data=f"pay_qr_{order_id}")],
-        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")]
+        [InlineKeyboardButton("🛍️ Вернуться в каталог", callback_data="back_to_catalog")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -815,7 +810,7 @@ async def confirm_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         return
 
     # Обновляем статус заказа
-    user_orders[order_id]['status'] = 'payment_pending'
+    user_orders[order_id]["status"] = "payment_pending"
     logger.info(f"Order {order_id} status updated to payment_pending")
 
     payment_confirmation = (
@@ -830,7 +825,7 @@ async def confirm_payment(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
 
     keyboard = [
         [InlineKeyboardButton("📞 Связаться с оператором", url="https://t.me/tk_operator")],
-        [InlineKeyboardButton("🛍️ Продолжить покупки", callback_data="back_to_catalog")]
+        [InlineKeyboardButton("🛍️ Продолжить покупки", callback_data="back_to_catalog")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -900,7 +895,9 @@ async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     # Создаем кнопки для каждой категории
     for category in sorted(categories.keys()):
-        keyboard.append([InlineKeyboardButton(f"📂 {category}", callback_data=f"category_{category}")])
+        keyboard.append(
+            [InlineKeyboardButton(f"📂 {category}", callback_data=f"category_{category}")]
+        )
 
     keyboard.append([InlineKeyboardButton("🔥 Все товары списком", callback_data="all_products")])
     keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="back_to_main")])
@@ -909,15 +906,13 @@ async def show_catalog(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if update.message:
         await update.message.reply_text(
-            "🛍️ Каталог защитной экипировки:\n\n"
-            "Выберите категорию товаров:",
-            reply_markup=reply_markup
+            "🛍️ Каталог защитной экипировки:\n\nВыберите категорию товаров:",
+            reply_markup=reply_markup,
         )
     else:
         await update.callback_query.edit_message_text(
-            "🛍️ Каталог защитной экипировки:\n\n"
-            "Выберите категорию товаров:",
-            reply_markup=reply_markup
+            "🛍️ Каталог защитной экипировки:\n\nВыберите категорию товаров:",
+            reply_markup=reply_markup,
         )
 
 
@@ -935,12 +930,18 @@ async def show_category(query, category_name: str) -> None:
     category_products.sort(key=lambda x: extract_price(x[1]["price"]))
 
     for product_id, product in category_products:
-        keyboard.append([InlineKeyboardButton(
-            f"{product['name']} - {product['price']}",
-            callback_data=f"product_{product_id}"
-        )])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{product['name']} - {product['price']}",
+                    callback_data=f"product_{product_id}",
+                )
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🔙 Назад к категориям", callback_data="back_to_catalog")])
+    keyboard.append(
+        [InlineKeyboardButton("🔙 Назад к категориям", callback_data="back_to_catalog")]
+    )
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -948,7 +949,7 @@ async def show_category(query, category_name: str) -> None:
         f"📂 {category_name}:\n\n"
         f"Найдено товаров: {len(category_products)}\n"
         "Выберите товар для подробной информации:",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
 
 
@@ -960,19 +961,24 @@ async def show_all_products(query) -> None:
     sorted_products = sorted(PRODUCTS.items(), key=lambda x: extract_price(x[1]["price"]))
 
     for product_id, product in sorted_products:
-        keyboard.append([InlineKeyboardButton(
-            f"{product['name']} - {product['price']}",
-            callback_data=f"product_{product_id}"
-        )])
+        keyboard.append(
+            [
+                InlineKeyboardButton(
+                    f"{product['name']} - {product['price']}",
+                    callback_data=f"product_{product_id}",
+                )
+            ]
+        )
 
-    keyboard.append([InlineKeyboardButton("🔙 Назад к категориям", callback_data="back_to_catalog")])
+    keyboard.append(
+        [InlineKeyboardButton("🔙 Назад к категориям", callback_data="back_to_catalog")]
+    )
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     await query.edit_message_text(
-        "🔥 Все товары:\n\n"
-        "Выберите товар для подробной информации:",
-        reply_markup=reply_markup
+        "🔥 Все товары:\n\nВыберите товар для подробной информации:",
+        reply_markup=reply_markup,
     )
 
 
@@ -985,7 +991,10 @@ async def show_product(query, product_id: str) -> None:
 
         product = PRODUCTS[product_id]
 
-        details = product.get("details", "• Информация уточняется у менеджера\n• Все характеристики соответствуют ГОСТ")
+        details = product.get(
+            "details",
+            "• Информация уточняется у менеджера\n• Все характеристики соответствуют ГОСТ",
+        )
 
         text = (
             f"{product['name']}\n\n"
@@ -1001,8 +1010,12 @@ async def show_product(query, product_id: str) -> None:
 
         # ИСПРАВЛЕННАЯ КЛАВИАТУРА БЕЗ КНОПКИ "КУПИТЬ СЕЙЧАС"
         keyboard = [
-            [InlineKeyboardButton("🛒 Добавить в корзину", callback_data=f"add_to_cart_{product_id}")],
-            [InlineKeyboardButton("📂 Назад к каталогу", callback_data="back_to_catalog")]
+            [
+                InlineKeyboardButton(
+                    "🛒 Добавить в корзину", callback_data=f"add_to_cart_{product_id}"
+                )
+            ],
+            [InlineKeyboardButton("📂 Назад к каталогу", callback_data="back_to_catalog")],
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -1010,12 +1023,10 @@ async def show_product(query, product_id: str) -> None:
         image_path = product.get("image")
         if image_path and os.path.exists(image_path):
             try:
-                with open(image_path, 'rb') as photo:
+                with open(image_path, "rb") as photo:
                     # Отправляем новое сообщение с фото
                     await query.message.reply_photo(
-                        photo=photo,
-                        caption=text,
-                        reply_markup=reply_markup
+                        photo=photo, caption=text, reply_markup=reply_markup
                     )
                 # Удаляем предыдущее сообщение с кнопками товара
                 try:
@@ -1047,7 +1058,9 @@ async def show_catalog_from_button(query) -> None:
         categories[category].append((product_id, product))
 
     for category in sorted(categories.keys()):
-        keyboard.append([InlineKeyboardButton(f"📂 {category}", callback_data=f"category_{category}")])
+        keyboard.append(
+            [InlineKeyboardButton(f"📂 {category}", callback_data=f"category_{category}")]
+        )
 
     keyboard.append([InlineKeyboardButton("🔥 Все товары списком", callback_data="all_products")])
     keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="back_to_main")])
@@ -1056,17 +1069,15 @@ async def show_catalog_from_button(query) -> None:
 
     try:
         await query.edit_message_text(
-            "🛍️ Каталог защитной экипировки:\n\n"
-            "Выберите категорию товаров:",
-            reply_markup=reply_markup
+            "🛍️ Каталог защитной экипировки:\n\nВыберите категорию товаров:",
+            reply_markup=reply_markup,
         )
     except Exception as e:
         logger.error(f"Error editing catalog message: {e}")
         # Если не удалось отредактировать сообщение, отправляем новое
         await query.message.reply_text(
-            "🛍️ Каталог защитной экипировки:\n\n"
-            "Выберите категорию товаров:",
-            reply_markup=reply_markup
+            "🛍️ Каталог защитной экипировки:\n\nВыберите категорию товаров:",
+            reply_markup=reply_markup,
         )
 
 
@@ -1075,14 +1086,11 @@ async def back_to_main(query) -> None:
     keyboard = [
         [KeyboardButton("🛍️ Каталог товаров"), KeyboardButton("❓ Частые вопросы")],
         [KeyboardButton("ℹ️ О компании"), KeyboardButton("📞 Контакты")],
-        [KeyboardButton("🔥 Топ товары"), KeyboardButton("🛒 Корзина")]
+        [KeyboardButton("🔥 Топ товары"), KeyboardButton("🛒 Корзина")],
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
 
-    await query.message.reply_text(
-        "Главное меню. Выберите действие:",
-        reply_markup=reply_markup
-    )
+    await query.message.reply_text("Главное меню. Выберите действие:", reply_markup=reply_markup)
 
 
 # Показ FAQ
@@ -1098,15 +1106,13 @@ async def show_faq(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     if update.message:
         await update.message.reply_text(
-            "❓ Частые вопросы:\n\n"
-            "Выберите интересующий вас вопрос:",
-            reply_markup=reply_markup
+            "❓ Частые вопросы:\n\nВыберите интересующий вас вопрос:",
+            reply_markup=reply_markup,
         )
     else:
         await update.callback_query.edit_message_text(
-            "❓ Частые вопросы:\n\n"
-            "Выберите интересующий вас вопрос:",
-            reply_markup=reply_markup
+            "❓ Частые вопросы:\n\nВыберите интересующий вас вопрос:",
+            reply_markup=reply_markup,
         )
 
 
@@ -1118,7 +1124,7 @@ async def show_faq_answer(query, faq_id: str) -> None:
 
     keyboard = [
         [InlineKeyboardButton("📋 Все вопросы", callback_data="back_to_faq")],
-        [InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_main")]
+        [InlineKeyboardButton("🔙 Главное меню", callback_data="back_to_main")],
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -1138,17 +1144,15 @@ async def show_faq_from_button(query) -> None:
 
     try:
         await query.edit_message_text(
-            "❓ Частые вопросы:\n\n"
-            "Выберите интересующий вас вопрос:",
-            reply_markup=reply_markup
+            "❓ Частые вопросы:\n\nВыберите интересующий вас вопрос:",
+            reply_markup=reply_markup,
         )
     except Exception as e:
         logger.error(f"Error editing FAQ message: {e}")
         # Если не удалось отредактировать сообщение, отправляем новое
         await query.message.reply_text(
-            "❓ Частые вопросы:\n\n"
-            "Выберите интересующий вас вопрос:",
-            reply_markup=reply_markup
+            "❓ Частые вопросы:\n\nВыберите интересующий вас вопрос:",
+            reply_markup=reply_markup,
         )
 
 
@@ -1175,28 +1179,31 @@ async def contacts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
     if update.message:
-        await update.message.reply_text(text, parse_mode='HTML', disable_web_page_preview=False)
+        await update.message.reply_text(text, parse_mode="HTML", disable_web_page_preview=False)
     else:
-        await update.callback_query.message.reply_text(text, parse_mode='HTML', disable_web_page_preview=False)
+        await update.callback_query.message.reply_text(
+            text, parse_mode="HTML", disable_web_page_preview=False
+        )
 
 
 # Показ топ товаров
 async def show_top_products(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # Выбираем несколько товаров как "топ"
-    top_products_ids = [
-        "komplekt_shturmovoy",
-        "komplekt_protivooskolochny"
-    ]
+    top_products_ids = ["komplekt_shturmovoy", "komplekt_protivooskolochny"]
 
     keyboard = []
 
     for product_id in top_products_ids:
         if product_id in PRODUCTS:
             product = PRODUCTS[product_id]
-            keyboard.append([InlineKeyboardButton(
-                f"{product['name']} - {product['price']}",
-                callback_data=f"product_{product_id}"
-            )])
+            keyboard.append(
+                [
+                    InlineKeyboardButton(
+                        f"{product['name']} - {product['price']}",
+                        callback_data=f"product_{product_id}",
+                    )
+                ]
+            )
 
     keyboard.append([InlineKeyboardButton("🔙 Назад", callback_data="back_to_main")])
 
@@ -1204,15 +1211,13 @@ async def show_top_products(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     if update.message:
         await update.message.reply_text(
-            "🔥 Самые популярные товары:\n\n"
-            "Проверенные решения для вашей безопасности:",
-            reply_markup=reply_markup
+            "🔥 Самые популярные товары:\n\nПроверенные решения для вашей безопасности:",
+            reply_markup=reply_markup,
         )
     else:
         await update.callback_query.edit_message_text(
-            "🔥 Самые популярные товары:\n\n"
-            "Проверенные решения для вашей безопасности:",
-            reply_markup=reply_markup
+            "🔥 Самые популярные товары:\n\nПроверенные решения для вашей безопасности:",
+            reply_markup=reply_markup,
         )
 
 
@@ -1327,7 +1332,9 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         elif "Query is too old" in str(e):
             error_message = "❌ Время действия кнопки истекло. Пожалуйста, начните заново."
         elif "Message to edit not found" in str(e):
-            error_message = "❌ Сообщение не найдено. Возможно, оно было удалено. Пожалуйста, начните заново."
+            error_message = (
+                "❌ Сообщение не найдено. Возможно, оно было удалено. Пожалуйста, начните заново."
+            )
 
         try:
             await query.edit_message_text(error_message)
@@ -1374,18 +1381,24 @@ def get_checkout_conversation_handler() -> ConversationHandler:
         entry_points=[CallbackQueryHandler(start_checkout_from_callback, pattern="^checkout$")],
         states={
             COLOR: [CallbackQueryHandler(ask_size, pattern="^color_")],
-            SIZE: [CallbackQueryHandler(ask_phone, pattern="^size_"),
-                   CallbackQueryHandler(back_to_color, pattern="^back_to_color$")],
-            PHONE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name),
-                    CallbackQueryHandler(cancel_order, pattern="^cancel_order$")],
+            SIZE: [
+                CallbackQueryHandler(ask_phone, pattern="^size_"),
+                CallbackQueryHandler(back_to_color, pattern="^back_to_color$"),
+            ],
+            PHONE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, ask_name),
+                CallbackQueryHandler(cancel_order, pattern="^cancel_order$"),
+            ],
             NAME: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_address)],
             ADDRESS: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_order)],
-            CONFIRM_ORDER: [CallbackQueryHandler(complete_order, pattern="^final_confirm$"),
-                            CallbackQueryHandler(change_data, pattern="^change_data$"),
-                            CallbackQueryHandler(cancel_order, pattern="^cancel_order$")]
+            CONFIRM_ORDER: [
+                CallbackQueryHandler(complete_order, pattern="^final_confirm$"),
+                CallbackQueryHandler(change_data, pattern="^change_data$"),
+                CallbackQueryHandler(cancel_order, pattern="^cancel_order$"),
+            ],
         },
         fallbacks=[CallbackQueryHandler(cancel_order, pattern="^cancel_order$")],
-        allow_reentry=True
+        allow_reentry=True,
     )
 
 
